@@ -59,7 +59,50 @@ Bộ lọc tương tác (Phòng ban, Vị trí công việc) cùng hệ thống 
 - Nhân viên có **làm thêm giờ** có số lượng nghỉ việc cao hơn (127) so với nhóm không làm thêm giờ (110) — đây là một trong những chỉ báo nghỉ việc mạnh nhất trong bộ dữ liệu. → Gợi ý: cần đánh giá lại khối lượng công việc và chính sách overtime tại các phòng ban có tần suất OT cao.
 - Nhân viên có **tần suất công tác thường xuyên** chiếm tỷ trọng nghỉ việc cao hơn (29% trong tổng số người nghỉ việc) so với nhóm không đi công tác (5%), dù nhóm "Travel Rarely" chiếm tỷ trọng lớn nhất trong tổng số nhân viên. (Lưu ý: đây là tỷ lệ % trên tổng số người đã nghỉ việc, không phải % nghỉ việc trong từng nhóm.)
 - Phần lớn nhân viên đánh giá mức độ cân bằng công việc - cuộc sống ở mức **"Better"** (893 người), cho thấy điều kiện làm việc nhìn chung khá tốt trên toàn công ty.
+---
+## Phân Tích Dự Đoán (Predictive Modeling)
 
+Để kiểm chứng và mở rộng thêm các insight từ dashboard Power BI, mình đã xây dựng thêm một mô hình dự đoán attrition bằng **Python (scikit-learn)**.
+
+**Phương pháp**
+- Tiền xử lý: mã hóa one-hot cho các biến phân loại (Department, JobRole, OverTime...), chia dữ liệu train/test theo tỷ lệ 80/20 (giữ nguyên tỷ lệ Attrition giữa 2 tập bằng `stratify`).
+- Mô hình sử dụng: **Random Forest Classifier** (200 cây), có áp dụng `class_weight='balanced'` để giảm ảnh hưởng của dữ liệu mất cân bằng (chỉ ~16% nhân viên nghỉ việc).
+
+**Kết quả đánh giá mô hình**
+
+| Chỉ số | Nhóm "Không nghỉ việc" | Nhóm "Nghỉ việc" |
+|---|---|---|
+| Precision | 0.87 | 0.42 |
+| Recall | 0.93 | 0.28 |
+| F1-score | 0.90 | 0.33 |
+
+- **ROC-AUC: 0.78** — cho thấy mô hình có khả năng phân biệt tốt giữa nhân viên có nguy cơ nghỉ việc và nhân viên ở lại, cao hơn đáng kể so với đoán ngẫu nhiên (0.5).
+- Recall ở nhóm "Nghỉ việc" còn thấp (0.28), điều này phản ánh đúng đặc điểm dữ liệu: chỉ có 237/1.470 nhân viên nghỉ việc, khiến mô hình có ít mẫu để học tốt nhóm thiểu số này. Đây là hạn chế cố hữu của bài toán, không phải lỗi triển khai.
+- Không sử dụng **Accuracy (0.82)** làm chỉ số chính vì bị "ảo" bởi nhóm đa số (No) chiếm phần lớn dữ liệu.
+
+**Top 10 Yếu Tố Ảnh Hưởng Đến Attrition (Feature Importance)**
+
+1. Monthly Income
+2. Age
+3. Total Working Years
+4. Daily Rate*
+5. Years At Company
+6. OverTime
+7. Monthly Rate*
+8. Hourly Rate*
+9. Distance From Home
+10. Years With Current Manager
+
+*Lưu ý: Daily Rate, Monthly Rate, Hourly Rate là các trường có tính chất dữ liệu không rõ ràng về mặt nghiệp vụ trong bộ dữ liệu gốc, nên được diễn giải thận trọng và không dùng làm cơ sở đề xuất chính sách.
+
+**Đối chiếu với Dashboard Power BI**
+
+Kết quả từ mô hình dự đoán **đồng nhất với các insight từ phân tích mô tả** trên Power BI:
+- **Monthly Income** là yếu tố dự đoán mạnh nhất → khớp với phát hiện "nhân viên thu nhập dưới $3.000/tháng có tỷ lệ nghỉ việc cao nhất".
+- **OverTime** nằm trong top 6 → xác nhận lại insight "làm thêm giờ là một trong những chỉ báo nghỉ việc mạnh nhất".
+- **Age** và **Years At Company** cũng nằm trong top → khớp với xu hướng "attrition tập trung ở nhân viên trẻ và mới vào năm đầu tiên".
+
+Việc hai phương pháp phân tích độc lập (BI mô tả và Machine Learning dự đoán) cho ra cùng một nhóm insight giúp củng cố độ tin cậy của kết quả phân tích tổng thể.
 ---
 
 ## Kết Quả Project
